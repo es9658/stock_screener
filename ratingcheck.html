@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Skeptic — Don't Trust the Buy Rating</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+:root{
+  --navy:#03071e;--navy2:#05102e;--card:#091852;--card2:#0c1f63;
+  --rim:#142d80;--rim2:#1d3fa0;
+  --sky:#4895ef;--sky2:#70b0ff;--skyg:rgba(72,149,239,.14);
+  --ink:#dce8ff;--ink2:#8ba8d8;--ink3:#4d6a9a;
+  --red:#f94144;--green:#43d98e;--amber:#f9c74f;
+  --red-t:rgba(249,65,68,.12);--green-t:rgba(67,217,142,.12);--amber-t:rgba(249,199,79,.12);
+  --mono:'JetBrains Mono',monospace;--display:'Archivo',sans-serif;--r:10px;
+}
+body{background:var(--navy);color:var(--ink);font-family:var(--display);font-size:16px;line-height:1.6;min-height:100vh;background-image:radial-gradient(ellipse 100% 60% at 50% 0%,rgba(72,149,239,.18) 0%,transparent 65%),radial-gradient(ellipse 40% 30% at 80% 80%,rgba(20,45,128,.6) 0%,transparent 60%);}
+.page{max-width:680px;margin:0 auto;padding:48px 20px 100px;position:relative}
+
+.live-dot{width:8px;height:8px;border-radius:50%;background:#ff2a2a;flex-shrink:0;
+  box-shadow:0 0 0 0 rgba(255,42,42,.6);
+  animation:livepulse 1.4s ease-in-out infinite}
+@keyframes livepulse{
+  0%{box-shadow:0 0 0 0 rgba(255,42,42,.7)}
+  70%{box-shadow:0 0 0 8px rgba(255,42,42,0)}
+  100%{box-shadow:0 0 0 0 rgba(255,42,42,0)}}
+
+50%{opacity:.3}}
+h1{font-size:clamp(30px,6.5vw,52px);font-weight:900;line-height:1.08;letter-spacing:-.03em;margin-bottom:14px;text-shadow:0 0 60px rgba(72,149,239,.2)}
+h1 .hl{color:var(--sky);position:relative}
+h1 .hl::after{content:'';position:absolute;left:0;bottom:-2px;width:100%;height:2px;background:var(--sky);opacity:.4}
+.tagline{font-size:17px;color:var(--ink);line-height:1.7;max-width:520px;margin-bottom:32px;font-weight:400} .tagline strong{color:var(--ink);font-weight:700}
+
+
+
+.search-card{background:var(--card);border:1px solid var(--rim);border-radius:var(--r);padding:22px;margin-bottom:28px;box-shadow:0 1px 0 rgba(255,255,255,.04) inset,0 8px 32px rgba(0,0,0,.4)}
+.field-label{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink3);margin-bottom:8px;display:block}
+.input-row{display:flex;gap:10px;align-items:stretch}
+#ticker{flex:1;min-width:0;background:var(--navy2);border:1.5px solid var(--rim);border-radius:8px;color:var(--ink);font-family:var(--mono);font-size:22px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;padding:14px 18px;outline:none;transition:border-color .2s,box-shadow .2s;-webkit-appearance:none}
+#ticker:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(72,149,239,.18)}
+#ticker::placeholder{color:var(--ink3);font-size:14px;letter-spacing:.06em}
+#go-btn{background:var(--sky);color:var(--navy);border:none;border-radius:8px;font-family:var(--display);font-size:14px;font-weight:700;letter-spacing:.02em;padding:0 24px;cursor:pointer;white-space:nowrap;transition:background .15s,box-shadow .15s,transform .1s;box-shadow:0 2px 16px rgba(72,149,239,.35)}
+#go-btn:hover:not(:disabled){background:var(--sky2);box-shadow:0 4px 24px rgba(72,149,239,.5);transform:translateY(-1px)}
+#go-btn:active:not(:disabled){transform:none}
+#go-btn:disabled{background:var(--rim);color:var(--ink3);cursor:not-allowed;box-shadow:none}
+#status{font-family:var(--mono);font-size:12px;color:var(--ink3);min-height:18px;margin-bottom:20px;display:flex;align-items:center;gap:8px}
+.spin{width:12px;height:12px;flex-shrink:0;border:2px solid var(--rim2);border-top-color:var(--sky);border-radius:50%;animation:spin .65s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#err{display:none;background:var(--red-t);border:1px solid rgba(249,65,68,.3);border-radius:var(--r);padding:14px 18px;font-size:13px;color:#ff8080;line-height:1.65;margin-bottom:20px}
+#err code{background:rgba(255,255,255,.08);padding:2px 7px;border-radius:4px;font-family:var(--mono);font-size:11px}
+#results{display:none}
+.co-card{background:var(--card);border:1px solid var(--rim);border-radius:var(--r);padding:22px;margin-bottom:14px;box-shadow:0 8px 32px rgba(0,0,0,.35)}
+.co-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;flex-wrap:wrap}
+.co-sym{font-size:38px;font-weight:900;letter-spacing:-.03em;line-height:1}
+.co-price{font-family:var(--mono);font-size:28px;font-weight:500;color:var(--sky2);line-height:1}
+.co-name{font-size:13px;color:var(--ink2);margin-top:5px;line-height:1.4}
+.co-sector{display:inline-block;font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--sky);background:var(--skyg);border:1px solid rgba(72,149,239,.22);padding:3px 10px;border-radius:100px;margin-top:6px}
+.verdict-row{display:flex;align-items:center;gap:12px;padding-top:16px;border-top:1px solid var(--rim);flex-wrap:wrap}
+.verdict-chip{font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;padding:5px 14px;border-radius:100px;border:1.5px solid;white-space:nowrap}
+.verdict-chip.pass{color:var(--green);border-color:var(--green);background:var(--green-t)}
+.verdict-chip.watch{color:var(--amber);border-color:var(--amber);background:var(--amber-t)}
+.verdict-chip.fail{color:var(--red);border-color:var(--red);background:var(--red-t)}
+.verdict-text{font-size:14px;color:var(--ink2)}
+.verdict-score{margin-left:auto;font-family:var(--mono);font-size:13px;color:var(--ink3);white-space:nowrap}
+.verdict-score strong{font-size:22px;color:var(--ink)}
+.score-bar{margin-bottom:14px}
+.score-track{height:3px;background:var(--rim);border-radius:2px;overflow:hidden;margin-bottom:5px}
+.score-fill{height:100%;width:0;border-radius:2px;transition:width 1.1s cubic-bezier(.16,1,.3,1)}
+.score-fill.low{background:var(--red)}.score-fill.mid{background:var(--amber)}.score-fill.high{background:var(--green)}
+.score-range{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--ink3)}
+.signals{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.sig{background:var(--card);border:1px solid var(--rim);border-left:3px solid var(--rim);border-radius:var(--r);padding:16px 18px;transition:border-color .2s,background .2s;animation:up .3s ease both;cursor:default}
+.sig:hover{background:var(--card2)}
+.sig.flag{border-left-color:var(--red)}.sig.caution{border-left-color:var(--amber)}
+.sig.clear{border-left-color:var(--green)}.sig.neutral{border-left-color:var(--rim2)}
+@keyframes up{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.sig:nth-child(1){animation-delay:.05s}.sig:nth-child(2){animation-delay:.10s}
+.sig:nth-child(3){animation-delay:.15s}.sig:nth-child(4){animation-delay:.20s}
+.sig:nth-child(5){animation-delay:.25s}
+.sig-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:5px}
+.sig-name{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3)}
+.sig-badge{font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:5px;white-space:nowrap;flex-shrink:0}
+.sig-badge.flag{color:var(--red);background:var(--red-t)}
+.sig-badge.caution{color:var(--amber);background:var(--amber-t)}
+.sig-badge.clear{color:var(--green);background:var(--green-t)}
+.sig-badge.neutral{color:var(--ink3);background:rgba(255,255,255,.05)}
+.sig-val{font-family:var(--mono);font-size:17px;font-weight:500;line-height:1.3;margin-bottom:6px;word-break:break-word}
+.sig-val.red{color:var(--red)}.sig-val.green{color:var(--green)}.sig-val.amber{color:var(--amber)}.sig-val.sky{color:var(--sky2)}.sig-val.muted{color:var(--ink3)}
+.sig-desc{font-size:13px;color:var(--ink2);line-height:1.6}
+.sig-src{font-family:var(--mono);font-size:10px;color:var(--ink3);margin-top:5px;opacity:.5}
+.disc{font-family:var(--mono);font-size:11px;color:var(--ink3);line-height:1.7;padding:14px 18px;background:rgba(72,149,239,.04);border:1px solid var(--rim);border-radius:var(--r)}
+@media(max-width:520px){
+  .page{padding:28px 16px 72px}.input-row{flex-direction:column}
+  #go-btn{width:100%;padding:14px}h1{font-size:28px}
+  .co-top{flex-direction:column;gap:8px}.co-price{font-size:22px}
+  .verdict-score{margin-left:0;width:100%}.sig-val{font-size:15px}
+}
+.live-badge{display:inline-flex;align-items:center;gap:9px;
+  margin-bottom:20px;font-family:var(--mono);font-size:12px;
+  letter-spacing:.2em;text-transform:uppercase;color:var(--ink2)}
+.live-dot{width:10px;height:10px;border-radius:50%;background:#ff2020;
+  flex-shrink:0;
+  animation:livepulse 1.2s ease-out infinite}
+@keyframes livepulse{
+  0%  {box-shadow:0 0 0 0 rgba(255,32,32,.9)}
+  60% {box-shadow:0 0 0 9px rgba(255,32,32,0)}
+  100%{box-shadow:0 0 0 0 rgba(255,32,32,0)}}
+
+.signal-list{display:flex;flex-direction:column;gap:6px;margin-bottom:32px}
+.sl-item{font-family:var(--mono);font-size:12px;line-height:1.6;
+  color:var(--ink3);padding-left:4px}
+
+.market-divider{color:var(--ink3);margin:0 2px}
+.market-status{font-family:var(--mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase}
+.market-status.open{color:#43d98e}
+.market-status.closed{color:var(--ink3)}
+.market-status.prepost{color:#f9c74f}
+
+/* ── Language switcher ──────────────────────────────────── */
+.lang-switcher{
+  position:absolute;top:24px;right:20px;
+  display:flex;align-items:center;gap:4px;
+  font-family:var(--mono);font-size:11px;
+}
+.lang-btn{
+  background:none;border:none;cursor:pointer;
+  color:var(--ink3);padding:4px 7px;border-radius:5px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.04em;
+  transition:all .15s;
+}
+.lang-btn:hover{color:var(--ink);background:rgba(72,149,239,.12)}
+.lang-btn.active{color:var(--sky2);background:rgba(72,149,239,.15);font-weight:500}
+.lang-sep{color:var(--rim2);font-size:10px}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="lang-switcher">
+    <button class="lang-btn active" onclick="setLang('en')">EN</button>
+    <span class="lang-sep">|</span>
+    <button class="lang-btn" onclick="setLang('zh-hans')">简</button>
+    <span class="lang-sep">|</span>
+    <button class="lang-btn" onclick="setLang('zh-hant')">繁</button>
+    <span class="lang-sep">|</span>
+    <button class="lang-btn" onclick="setLang('es')">ES</button>
+  </div>
+
+  <div style="margin-bottom:40px">
+    <div class="live-badge">
+    <span class="live-dot"></span>LIVE
+    <span class="market-divider">·</span>
+    <span class="market-status" id="market-status"></span>
+  </div>
+    <h1>Don't trust the<br><span class="hl">Buy rating.</span></h1>
+    <p class="tagline">Wall Street gives <strong>Buy</strong> ratings 90% of the time.<br>We show you what they're hiding.</p>
+  <div class="signal-list">
+    <div class="sl-item">— Insider selling detected: executives dumping while analysts say Buy</div>
+    <div class="sl-item">— 85%+ Buy ratings is a red flag: no one left to upgrade, only room to fall</div>
+    <div class="sl-item">— EPS beats signal real strength: hard numbers, not analyst opinion</div>
+  </div>
+  </div>
+
+<div class="search-card">
+    <label class="field-label" for="ticker">Enter a stock ticker</label>
+    <div class="input-row">
+      <input type="text" id="ticker" placeholder="IBM, NVDA, AAPL…" maxlength="10" autocomplete="off" spellcheck="false" inputmode="text">
+      <button id="go-btn">Analyze →</button>
+    </div>
+  </div>
+
+  <div id="status"></div>
+  <div id="err"></div>
+
+  <div id="results">
+    <div class="co-card">
+      <div class="co-top">
+        <div>
+          <div class="co-sym" id="r-sym"></div>
+          <div class="co-name" id="r-name"></div>
+          <div id="r-sector" class="co-sector" style="display:none"></div>
+        </div>
+        <div><div class="co-price" id="r-price"></div></div>
+      </div>
+      <div class="verdict-row">
+        <div class="verdict-chip" id="verdict-chip"></div>
+        <div class="verdict-text" id="verdict-text"></div>
+        <div class="verdict-score"><strong id="score-n"></strong>/9</div>
+      </div>
+    </div>
+    <div class="score-bar">
+      <div class="score-track"><div class="score-fill" id="score-fill"></div></div>
+      <div class="score-range"><span>0 — all red flags</span><span>9 — all clear</span></div>
+    </div>
+    <div class="signals" id="signals"></div>
+    <div class="disc">
+      Data: Alpha Vantage OVERVIEW + EARNINGS (2 calls/ticker) · SEC EDGAR Form 4<br>
+      Not financial advice. Verify with primary sources before making investment decisions.
+    </div>
+  </div>
+</div>
+<script>
+
+// ╔══════════════════════════════════════════════════════════════╗
+// ║  STEP 1: Go to https://www.alphavantage.co/support/#api-key  ║
+// ║  STEP 2: Enter your email — key arrives instantly            ║
+// ║  STEP 3: Paste it between the quotes below ↓                 ║
+// ╚══════════════════════════════════════════════════════════════╝
+
+const AV_KEY = "EBOTGM0W2M843MYB";   // <── PASTE YOUR FREE KEY HERE
+
+// ── DO NOT EDIT BELOW THIS LINE ────────────────────────────────
+
+const AV = "https://www.alphavantage.co/query";
+
+// ── Translations ──────────────────────────────────────────
+const TRANSLATIONS = {
+  en: {
+    badge:        "LIVE",
+    h1a:          "Don't trust the",
+    h1b:          "Buy rating.",
+    tagline:      'Wall Street gives <strong>Buy</strong> ratings 90% of the time.<br>We show you what they\'re hiding.',
+    sl1:          "— Insider selling detected: executives dumping while analysts say Buy",
+    sl2:          "— 85%+ Buy ratings is a red flag: no one left to upgrade, only room to fall",
+    sl3:          "— EPS beats signal real strength: hard numbers, not analyst opinion",
+    fieldLabel:   "Enter a stock ticker",
+    placeholder:  "IBM, NVDA, AAPL…",
+    btnAnalyze:   "Analyze →",
+    scoreMin:     "0 — all red flags",
+    scoreMax:     "9 — all clear",
+    disc:         "Data: Alpha Vantage OVERVIEW + EARNINGS (2 calls/ticker) · SEC EDGAR Form 4<br>Not financial advice. Verify with primary sources before making investment decisions.",
+    fetching1:    "Fetching data for",
+    fetching2:    "Fetching earnings for",
+    step1:        "(1/2)",
+    step2:        "(2/2)",
+    insiderFetch: "Fetching insider data for",
+    updated:      "Updated",
+    source:       "· Alpha Vantage + SEC EDGAR",
+    verdictPass:  "Hard data supports the thesis",
+    verdictWatch: "Mixed signals — proceed with caution",
+    verdictFail:  "Hard data contradicts analyst consensus",
+    errNoKey:     "<strong>API key missing.</strong><br>Open this file in a text editor, find <code>const AV_KEY = \"\"</code> and paste your Alpha Vantage key inside the quotes.<br>Get a free key at: <a href=\"https://www.alphavantage.co/support/#api-key\" target=\"_blank\" style=\"color:var(--sky2)\">alphavantage.co/support/#api-key</a>",
+    mktOpen:      "Market Open",
+    mktClosed:    "Market Closed",
+    mktPre:       "Pre-Market",
+    mktAfter:     "After Hours",
+    sigNames: {
+      short_ratio:      "Short Ratio (Days to Cover)",
+      eps_history:      "EPS Beat / Miss History",
+      insider_activity: "Insider Activity · 90 Days (SEC Form 4)",
+      price_vs_target:  "Analyst Consensus Price Target",
+      buy_pct:          "Analyst Buy % — Bias Check",
+    },
+        srcOVERVIEW: "Source: Alpha Vantage OVERVIEW",
+    srcEARNINGS: "Source: Alpha Vantage EARNINGS",
+    srcEDGAR:    "Source: SEC EDGAR — free, no key",
+    shortDesc: {
+      high: "High short ratio — heavy institutional bet against this stock.", mid: "Moderate short pressure. Worth monitoring.",
+      low:  "Low short ratio. No major bet against this name.",  na:  "Short ratio unavailable.",
+    },
+    epsDesc: {
+      miss: "Missing earnings estimates — management underdelivering vs expectations.", flat: "No consistent beat/miss pattern in recent quarters.", beat: "Consecutive earnings beats — management delivering above expectations.",
+    },
+    insiderDesc: {
+      sell: "Net insider selling. Executives know more than any analyst — hard warning.", buy: "Net insider buying with personal capital. Strongest possible confirmation.",
+      none: "No clear net insider direction in the last 90 days.", na:  "Insider data unavailable.",
+    },
+    ptDesc: {
+      high: "Consensus PT implies meaningful upside — analysts see room to run.", low: "Modest upside to consensus. Limited margin of safety.",
+      below: "Stock trading above analyst consensus — downside implied.", na: "Price target near current price or unavailable.",
+    },
+    buypctDesc: {
+      skewed: "% Buy ratings is statistically useless. No one left to upgrade — consensus can only move down. Penalty applied.", elev: "Elevated buy consensus. Take analyst targets with extra skepticism.",
+      normal: "Analyst coverage is not heavily skewed toward Buy.", na: "Analyst data unavailable.",
+      low: "% of analysts rate this a Buy — unusually low, signals analyst community is broadly bearish.",
+    },
+    badgeLabels: { flag:"Red Flag", caution:"Caution", clear:"Clear", neutral:"Neutral" },
+  },
+  "zh-hans": {
+    badge:        "实时",
+    h1a:          "不要相信",
+    h1b:          "买入评级。",
+    tagline:      '华尔街 <strong>90%</strong> 的时候给出"买入"评级。<br>我们告诉你他们隐藏了什么。',
+    sl1:          "— 检测到内部人员抛售：高管在分析师喊买时套现",
+    sl2:          "— 85%以上的买入评级是危险信号：已无人可升级，只会下跌",
+    sl3:          "— EPS超预期意味着真实实力：硬数据，不是分析师观点",
+    fieldLabel:   "输入股票代码",
+    placeholder:  "IBM, NVDA, AAPL…",
+    btnAnalyze:   "分析 →",
+    scoreMin:     "0 — 全部危险信号",
+    scoreMax:     "9 — 全部清晰",
+    disc:         "数据来源：Alpha Vantage OVERVIEW + EARNINGS（每次2次API调用）· SEC EDGAR Form 4<br>非投资建议。做出投资决策前请以权威来源为准。",
+    fetching1:    "正在获取数据：",
+    fetching2:    "正在获取盈利数据：",
+    step1:        "（1/2）",
+    step2:        "（2/2）",
+    insiderFetch: "正在获取内部人员数据：",
+    updated:      "已更新",
+    source:       "· Alpha Vantage + SEC EDGAR",
+    verdictPass:  "硬数据支持该论点",
+    verdictWatch: "信号混合——谨慎操作",
+    verdictFail:  "硬数据与分析师共识相矛盾",
+    errNoKey:     "<strong>缺少API密钥。</strong><br>用文本编辑器打开此文件，找到 <code>const AV_KEY = \"\"</code>，在引号中粘贴你的Alpha Vantage密钥。<br>免费获取密钥：<a href=\"https://www.alphavantage.co/support/#api-key\" target=\"_blank\" style=\"color:var(--sky2)\">alphavantage.co/support/#api-key</a>",
+    mktOpen:      "市场开市",
+    mktClosed:    "市场休市",
+    mktPre:       "盘前交易",
+    mktAfter:     "盘后交易",
+    sigNames: {
+      short_ratio:      "做空比率（回补天数）",
+      eps_history:      "每股收益超预期/未达预期历史",
+      insider_activity: "内部人员交易 · 90天（SEC Form 4）",
+      price_vs_target:  "分析师一致目标价",
+      buy_pct:          "分析师买入比例 — 偏差检测",
+    },
+        srcOVERVIEW: "来源：Alpha Vantage OVERVIEW",
+    srcEARNINGS: "来源：Alpha Vantage EARNINGS",
+    srcEDGAR:    "来源：SEC EDGAR — 免费，无需密钥",
+    shortDesc: {
+      high: "做空比率高——大量机构押注做空该股票。", mid: "做空压力适中，值得关注。",
+      low:  "做空比率低，没有重大机构做空。",  na:  "做空比率数据不可用。",
+    },
+    epsDesc: {
+      miss: "未达盈利预期——管理层表现低于预期。", flat: "近几季度无一致的超预期/未达预期规律。", beat: "连续超盈利预期——管理层持续超越预期。",
+    },
+    insiderDesc: {
+      sell: "内部净抛售。高管掌握的信息比任何分析师都多——这是强烈警告信号。", buy: "内部人员用自有资金净买入，这是最强的确认信号。",
+      none: "过去90天内没有明确的内部人员净方向。", na:  "内部人员数据不可用。",
+    },
+    ptDesc: {
+      high: "一致目标价意味着显著上行空间——分析师看好后续走势。", low: "距一致目标价上行空间有限，安全边际不足。",
+      below: "股价高于分析师一致目标价——下行风险隐现。", na: "目标价接近当前价格或数据不可用。",
+    },
+    buypctDesc: {
+      skewed: "%的买入评级在统计上毫无意义。已无人可升级——共识只能向下移动。已扣分。", elev: "买入共识偏高，建议对分析师目标价保持额外怀疑。",
+      normal: "分析师覆盖较为均衡，买入评级未明显虚高。", na: "分析师数据不可用。",
+      low: "%的分析师给出买入评级——异常偏低，表明分析师群体普遍看空。",
+    },
+    badgeLabels: { flag:"危险信号", caution:"注意", clear:"良好", neutral:"中性" },
+  },
+  "zh-hant": {
+    badge:        "即時",
+    h1a:          "不要相信",
+    h1b:          "買入評級。",
+    tagline:      '華爾街 <strong>90%</strong> 的時候給出「買入」評級。<br>我們告訴你他們隱藏了什麼。',
+    sl1:          "— 偵測到內部人員拋售：高管在分析師喊買時套現",
+    sl2:          "— 85%以上的買入評級是危險訊號：已無人可升級，只會下跌",
+    sl3:          "— EPS超預期意味著真實實力：硬數據，不是分析師觀點",
+    fieldLabel:   "輸入股票代碼",
+    placeholder:  "IBM, NVDA, AAPL…",
+    btnAnalyze:   "分析 →",
+    scoreMin:     "0 — 全部危險訊號",
+    scoreMax:     "9 — 全部清晰",
+    disc:         "資料來源：Alpha Vantage OVERVIEW + EARNINGS（每次2次API呼叫）· SEC EDGAR Form 4<br>非投資建議。做出投資決策前請以權威來源為準。",
+    fetching1:    "正在獲取資料：",
+    fetching2:    "正在獲取盈利資料：",
+    step1:        "（1/2）",
+    step2:        "（2/2）",
+    insiderFetch: "正在獲取內部人員資料：",
+    updated:      "已更新",
+    source:       "· Alpha Vantage + SEC EDGAR",
+    verdictPass:  "硬數據支持該論點",
+    verdictWatch: "訊號混合——謹慎操作",
+    verdictFail:  "硬數據與分析師共識相矛盾",
+    errNoKey:     "<strong>缺少API金鑰。</strong><br>用文字編輯器開啟此檔案，找到 <code>const AV_KEY = \"\"</code>，在引號中貼上你的Alpha Vantage金鑰。<br>免費取得金鑰：<a href=\"https://www.alphavantage.co/support/#api-key\" target=\"_blank\" style=\"color:var(--sky2)\">alphavantage.co/support/#api-key</a>",
+    mktOpen:      "市場開市",
+    mktClosed:    "市場休市",
+    mktPre:       "盤前交易",
+    mktAfter:     "盤後交易",
+    sigNames: {
+      short_ratio:      "做空比率（回補天數）",
+      eps_history:      "每股收益超預期/未達預期歷史",
+      insider_activity: "內部人員交易 · 90天（SEC Form 4）",
+      price_vs_target:  "分析師一致目標價",
+      buy_pct:          "分析師買入比例 — 偏差偵測",
+    },
+        srcOVERVIEW: "來源：Alpha Vantage OVERVIEW",
+    srcEARNINGS: "來源：Alpha Vantage EARNINGS",
+    srcEDGAR:    "來源：SEC EDGAR — 免費，無需金鑰",
+    shortDesc: {
+      high: "做空比率高——大量機構押注做空該股票。", mid: "做空壓力適中，值得關注。",
+      low:  "做空比率低，沒有重大機構做空。",  na:  "做空比率資料不可用。",
+    },
+    epsDesc: {
+      miss: "未達盈利預期——管理層表現低於預期。", flat: "近幾季度無一致的超預期/未達預期規律。", beat: "連續超盈利預期——管理層持續超越預期。",
+    },
+    insiderDesc: {
+      sell: "內部淨拋售。高管掌握的資訊比任何分析師都多——這是強烈警告訊號。", buy: "內部人員用自有資金淨買入，這是最強的確認訊號。",
+      none: "過去90天內沒有明確的內部人員淨方向。", na:  "內部人員資料不可用。",
+    },
+    ptDesc: {
+      high: "一致目標價意味著顯著上行空間——分析師看好後續走勢。", low: "距一致目標價上行空間有限，安全邊際不足。",
+      below: "股價高於分析師一致目標價——下行風險隱現。", na: "目標價接近當前價格或資料不可用。",
+    },
+    buypctDesc: {
+      skewed: "%的買入評級在統計上毫無意義。已無人可升級——共識只能向下移動。已扣分。", elev: "買入共識偏高，建議對分析師目標價保持額外懷疑。",
+      normal: "分析師覆蓋較為均衡，買入評級未明顯虛高。", na: "分析師資料不可用。",
+      low: "%的分析師給出買入評級——異常偏低，表明分析師群體普遍看空。",
+    },
+    badgeLabels: { flag:"危險訊號", caution:"注意", clear:"良好", neutral:"中性" },
+  },
+  es: {
+    badge:        "EN VIVO",
+    h1a:          "No confíes en la",
+    h1b:          "calificación de compra.",
+    tagline:      'Wall Street da calificaciones de <strong>Compra</strong> el 90% del tiempo.<br>Te mostramos lo que ocultan.',
+    sl1:          "— Ventas internas detectadas: ejecutivos vendiendo mientras analistas dicen Compra",
+    sl2:          "— 85%+ de calificaciones de compra es señal de alerta: no hay nadie más que mejore, solo puede bajar",
+    sl3:          "— Superar estimados de EPS señala fortaleza real: datos duros, no opinión de analistas",
+    fieldLabel:   "Ingresa un ticker bursátil",
+    placeholder:  "IBM, NVDA, AAPL…",
+    btnAnalyze:   "Analizar →",
+    scoreMin:     "0 — todas las señales de alerta",
+    scoreMax:     "9 — todo despejado",
+    disc:         "Datos: Alpha Vantage OVERVIEW + EARNINGS (2 llamadas/acción) · SEC EDGAR Form 4<br>No es asesoramiento financiero. Verifica con fuentes primarias antes de tomar decisiones de inversión.",
+    fetching1:    "Obteniendo datos para",
+    fetching2:    "Obteniendo ganancias para",
+    step1:        "(1/2)",
+    step2:        "(2/2)",
+    insiderFetch: "Obteniendo datos internos para",
+    updated:      "Actualizado",
+    source:       "· Alpha Vantage + SEC EDGAR",
+    verdictPass:  "Los datos duros apoyan la tesis",
+    verdictWatch: "Señales mixtas — proceder con cautela",
+    verdictFail:  "Los datos duros contradicen el consenso de analistas",
+    errNoKey:     "<strong>Clave API faltante.</strong><br>Abre este archivo en un editor de texto, busca <code>const AV_KEY = \"\"</code> y pega tu clave de Alpha Vantage dentro de las comillas.<br>Obtén una clave gratis en: <a href=\"https://www.alphavantage.co/support/#api-key\" target=\"_blank\" style=\"color:var(--sky2)\">alphavantage.co/support/#api-key</a>",
+    mktOpen:      "Mercado Abierto",
+    mktClosed:    "Mercado Cerrado",
+    mktPre:       "Pre-Mercado",
+    mktAfter:     "Mercado Extendido",
+    sigNames: {
+      short_ratio:      "Ratio de Cortos (Días para Cubrir)",
+      eps_history:      "Historial de Superación / Fallo de EPS",
+      insider_activity: "Actividad Interna · 90 Días (SEC Form 4)",
+      price_vs_target:  "Precio Objetivo Consensuado de Analistas",
+      buy_pct:          "% de Compra de Analistas — Detección de Sesgo",
+    },
+        srcOVERVIEW: "Fuente: Alpha Vantage OVERVIEW",
+    srcEARNINGS: "Fuente: Alpha Vantage EARNINGS",
+    srcEDGAR:    "Fuente: SEC EDGAR — gratis, sin clave",
+    shortDesc: {
+      high: "Ratio de cortos alto — grandes institucionales apostando contra esta acción.", mid: "Presión moderada de cortos. Vale la pena monitorear.",
+      low:  "Ratio de cortos bajo. No hay grandes apuestas contra esta acción.",  na:  "Datos de ratio de cortos no disponibles.",
+    },
+    epsDesc: {
+      miss: "No se alcanzaron las estimaciones de ganancias — la dirección está por debajo de las expectativas.", flat: "Sin patrón consistente de superación/fallo en trimestres recientes.", beat: "Superaciones consecutivas de ganancias — la dirección cumple por encima de las expectativas.",
+    },
+    insiderDesc: {
+      sell: "Ventas internas netas detectadas. Los ejecutivos saben más que cualquier analista — señal de advertencia fuerte.", buy: "Compras internas netas con capital personal. La señal de confirmación más sólida posible.",
+      none: "Sin dirección interna neta clara en los últimos 90 días.", na:  "Datos de actividad interna no disponibles.",
+    },
+    ptDesc: {
+      high: "El PT consensuado implica un alza significativa — los analistas ven recorrido al alza.", low: "Modesta alza hasta el consenso. Margen de seguridad limitado.",
+      below: "Acción cotizando por encima del PT consensuado — caída implícita.", na: "Precio objetivo cercano al precio actual o no disponible.",
+    },
+    buypctDesc: {
+      skewed: "% de calificaciones de Compra es estadísticamente inútil. No queda nadie para mejorar — el consenso solo puede bajar. Penalización aplicada.", elev: "Consenso de compra elevado. Tomar objetivos de analistas con escepticismo extra.",
+      normal: "Cobertura equilibrada. Las calificaciones de compra no están infladas.", na: "Datos de analistas no disponibles.",
+      low: "% de los analistas califican esto como Compra — inusualmente bajo, señala que la comunidad de analistas es ampliamente bajista.",
+    },
+    badgeLabels: { flag:"Señal de Alerta", caution:"Precaución", clear:"Despejado", neutral:"Neutral" },
+  },
+};
+
+let currentLang = 'en';
+
+function setLang(lang) {
+  currentLang = lang;
+  const t = TRANSLATIONS[lang];
+  if (!t) return;
+
+  // Update lang buttons
+  document.querySelectorAll('.lang-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.getAttribute('onclick').includes("'" + lang + "'"));
+  });
+
+  // Static UI strings
+  const live = document.querySelector('.live-badge');
+  if (live) {
+    const dot = live.querySelector('.live-dot');
+    live.innerHTML = '';
+    live.appendChild(dot);
+    live.append(' ' + t.badge);
+    const sep = document.querySelector('.market-divider');
+    if (sep) live.appendChild(sep);
+    const mktEl = document.getElementById('market-status');
+    if (mktEl) live.appendChild(mktEl);
+  }
+
+  const h1 = document.querySelector('h1');
+  if (h1) h1.innerHTML = t.h1a + '<br><span class="hl">' + t.h1b + '</span>';
+
+  const tagline = document.querySelector('.tagline');
+  if (tagline) tagline.innerHTML = t.tagline;
+
+  const slItems = document.querySelectorAll('.sl-item');
+  if (slItems[0]) slItems[0].textContent = t.sl1;
+  if (slItems[1]) slItems[1].textContent = t.sl2;
+  if (slItems[2]) slItems[2].textContent = t.sl3;
+
+  const fieldLabel = document.querySelector('.field-label');
+  if (fieldLabel) fieldLabel.textContent = t.fieldLabel;
+
+  const tickerInput = document.getElementById('ticker');
+  if (tickerInput) tickerInput.placeholder = t.placeholder;
+
+  const goBtn = document.getElementById('go-btn');
+  if (goBtn) goBtn.textContent = t.btnAnalyze;
+
+  const scoreMin = document.querySelector('.score-range span:first-child');
+  const scoreMax = document.querySelector('.score-range span:last-child');
+  if (scoreMin) scoreMin.textContent = t.scoreMin;
+  if (scoreMax) scoreMax.textContent = t.scoreMax;
+
+  const disc = document.querySelector('.disc');
+  if (disc) disc.innerHTML = t.disc;
+
+  // Update market status text
+  updateMarketStatus();
+
+  // Re-render signals if results are visible (so desc/src translate immediately)
+  if (document.getElementById('results').style.display !== 'none' && window._lastRenderData) {
+    render(window._lastRenderData);
+  }
+}
+
+
+const delay = ms => new Promise(res => setTimeout(res, ms));
+
+async function avGet(params) {
+  const url = `${AV}?${new URLSearchParams({ ...params, apikey: AV_KEY })}`;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`Alpha Vantage HTTP ${r.status}`);
+  const d = await r.json();
+  if (d.Information || d.Note) throw new Error(
+    "Rate limit hit — wait 60 seconds and try again.<br>" +
+    "<small>Alpha Vantage free tier: 5 calls/min, 25 calls/day.</small>"
+  );
+  return d;
+}
+
+async function edgarInsider(sym) {
+  try {
+    const start = new Date(Date.now() - 90*24*60*60*1000).toISOString().slice(0,10);
+    const r = await fetch(`https://efts.sec.gov/LATEST/search-index?q=%22${sym}%22&dateRange=custom&startdt=${start}&forms=4`,
+      { headers:{"User-Agent":"SkepticApp contact@example.com"} });
+    const d = await r.json();
+    let buys=0, sells=0;
+    for (const h of (d?.hits?.hits||[]).slice(0,25)) {
+      const src=h._source||{}; if(src.form_type!=="4") continue;
+      const raw=JSON.stringify(src).toUpperCase();
+      if(raw.includes('"A"')||raw.includes("PURCHASE")) buys++;
+      else if(raw.includes('"D"')||raw.includes("SALE")) sells++;
+    }
+    if(buys>sells)  return {signal:"buy",  desc:`${buys} acquisitions vs ${sells} disposals (Form 4, 90d)`};
+    if(sells>buys)  return {signal:"sell", desc:`${sells} disposals vs ${buys} acquisitions (Form 4, 90d)`};
+    return {signal:"none", desc:"No net insider direction detected (Form 4, 90d)"};
+  } catch { return {signal:"unavailable", desc:"Insider data unavailable"}; }
+}
+
+async function analyze() {
+  const sym = document.getElementById("ticker").value.trim().toUpperCase();
+  if (!sym) return;
+  if (!AV_KEY || !AV_KEY.trim()) {
+    showErr(`<strong>API key missing.</strong><br>Open this file in a text editor, find <code>const AV_KEY = ""</code> and paste your Alpha Vantage key inside the quotes.<br>Get a free key at: <a href="https://www.alphavantage.co/support/#api-key" target="_blank" style="color:var(--sky2)">alphavantage.co/support/#api-key</a>`);
+    return;
+  }
+  hideErr();
+  document.getElementById("results").style.display = "none";
+  document.getElementById("go-btn").disabled = true;
+
+  try {
+    // Call 1: OVERVIEW — has price, analyst ratings, PT, short ratio (1 of 2 calls)
+    setStatus(`Fetching data for ${sym}… (1/2)`, true);
+    const ov = await avGet({ function:"OVERVIEW", symbol:sym });
+    if (!ov.Symbol) throw new Error(`Ticker "${sym}" not found. Use a US-listed symbol like AAPL or IBM.`);
+
+    // Price from OVERVIEW — avoids extra GLOBAL_QUOTE call
+    const price = parseFloat(ov["50DayMovingAverage"]) || parseFloat(ov["200DayMovingAverage"]) || 0;
+
+    // Wait 1.5s before next call to stay under 5/min rate limit
+    await delay(1500);
+
+    // Call 2: EARNINGS — beat/miss history (2 of 2 calls)
+    setStatus(`Fetching earnings for ${sym}… (2/2)`, true);
+    let epsRaw=0, epsDesc="No earnings data";
+    try {
+      const earn = await avGet({ function:"EARNINGS", symbol:sym });
+      const qtrs = earn.quarterlyEarnings||[];
+      let streak=0;
+      for (const q of qtrs.slice(0,4)) {
+        const est=parseFloat(q.estimatedEPS), actual=parseFloat(q.reportedEPS);
+        if(!isNaN(est)&&!isNaN(actual)&&actual>est) streak++; else break;
+      }
+      const last=qtrs[0];
+      if (last) {
+        const surp=parseFloat(last.surprisePercentage);
+        epsDesc = isNaN(surp)
+          ? `Last EPS: $${last.reportedEPS}`
+          : `Last quarter ${surp>=0?"beat":"missed"} by ${Math.abs(surp).toFixed(1)}%  ·  ${streak} consecutive beat${streak!==1?"s":""}`;
+        epsRaw = streak>=3?2:streak>=1?1:surp<-10?-2:surp<0?-1:0;
+      }
+    } catch(e) { if(e.message.includes("Rate")) throw e; }
+
+    setStatus(`Fetching insider data for ${sym}…`, true);
+    const insider = await edgarInsider(sym);
+
+    const analystPT  = parseFloat(ov.AnalystTargetPrice)||0;
+    const shortRatio = parseFloat(ov.ShortRatio)||0;
+    const sBuy=parseInt(ov.AnalystRatingStrongBuy)||0;
+    const bBuy=parseInt(ov.AnalystRatingBuy)||0;
+    const hold=parseInt(ov.AnalystRatingHold)||0;
+    const sell=parseInt(ov.AnalystRatingSell)||0;
+    const sSell=parseInt(ov.AnalystRatingStrongSell)||0;
+    const total=sBuy+bBuy+hold+sell+sSell;
+    const buyPct=total>0?+((sBuy+bBuy)/total*100).toFixed(1):0;
+    const ptUp=price>0&&analystPT>0?+((analystPT/price-1)*100).toFixed(1):0;
+
+    let score=0;
+    if(shortRatio>0 && shortRatio<=2) score+=2; else if(shortRatio>0 && shortRatio<=4) score+=1;
+    if(epsRaw>=2) score+=3; else if(epsRaw===1) score+=2; else if(epsRaw===0) score+=1;
+    if(insider.signal==="buy") score+=2; else if(insider.signal==="none") score+=1; // unavailable = 0
+    if(ptUp>15) score+=2; else if(ptUp>0) score+=1;
+    if(buyPct>=85) score-=1;
+    score=Math.max(0,Math.min(score,9));
+    const verdict=score>=6?"PASS":score>=4?"WATCH":"FAIL";
+
+    render({
+      symbol:sym, name:ov.Name||sym, sector:ov.Sector||"", price,
+      score, verdict,
+      signals:{
+        short_ratio:{
+          value:shortRatio>0?`${shortRatio} days to cover`:"N/A",
+          raw:shortRatio,
+          badge:shortRatio<=0?"neutral":shortRatio>5?"flag":shortRatio>3?"caution":"clear"
+        },
+        eps_history:{
+          value:epsDesc, raw:epsRaw,
+          badge:epsRaw<-1?"flag":epsRaw<0?"caution":epsRaw>1?"clear":"neutral"
+        },
+        insider_activity:{
+          value:insider.desc, raw:insider.signal,
+          badge:insider.signal==="sell"?"flag":insider.signal==="buy"?"clear":insider.signal==="unavailable"?"neutral":"neutral"
+        },
+        price_vs_target:{
+          value:analystPT>0?`Consensus PT $${analystPT.toFixed(0)}  ·  ${ptUp>=0?"+":""}${ptUp}% from $${price.toFixed(0)}`:"N/A",
+          raw:ptUp,
+          badge:ptUp>15?"clear":ptUp<-5?"flag":"neutral"
+        },
+        buy_pct:{
+          value:total>0?`${buyPct}% Buy  ·  ${total} analysts`:"N/A",
+          raw:buyPct,
+          badge:buyPct>=85?"caution":buyPct>=70?"clear":"flag"
+        }
+      }
+    });
+    setStatus(`Updated ${new Date().toLocaleTimeString()} · Alpha Vantage + SEC EDGAR`);
+  } catch(e) {
+    setStatus("");
+    showErr(`<strong>Error:</strong> ${e.message}`);
+  } finally {
+    document.getElementById("go-btn").disabled=false;
+  }
+}
+
+const META={
+  short_ratio:{
+    color:v=>v.raw>5?"red":v.raw>3?"amber":v.raw>0?"green":"muted",
+    src: ()=>{ const t=TRANSLATIONS[currentLang]||TRANSLATIONS.en; return t.srcOVERVIEW; },
+    desc:v=>{ const t=(TRANSLATIONS[currentLang]||TRANSLATIONS.en).shortDesc||TRANSLATIONS.en.shortDesc;
+      return v.raw>5?t.high:v.raw>3?t.mid:v.raw>0?t.low:t.na; }
+  },
+  eps_history:{
+    color:v=>v.raw<0?"red":v.raw>1?"green":"amber",
+    src: ()=>{ const t=TRANSLATIONS[currentLang]||TRANSLATIONS.en; return t.srcEARNINGS; },
+    desc:v=>{ const t=(TRANSLATIONS[currentLang]||TRANSLATIONS.en).epsDesc||TRANSLATIONS.en.epsDesc;
+      return v.raw<0?t.miss:v.raw===0?t.flat:t.beat; }
+  },
+  insider_activity:{
+    color:v=>v.raw==="sell"?"red":v.raw==="buy"?"green":"muted",
+    src: ()=>{ const t=TRANSLATIONS[currentLang]||TRANSLATIONS.en; return t.srcEDGAR; },
+    desc:v=>{ const t=(TRANSLATIONS[currentLang]||TRANSLATIONS.en).insiderDesc||TRANSLATIONS.en.insiderDesc;
+      return v.raw==="sell"?t.sell:v.raw==="buy"?t.buy:v.raw==="unavailable"?t.na:t.none; }
+  },
+  price_vs_target:{
+    color:v=>v.raw>15?"green":v.raw>0?"sky":v.raw<-5?"red":"muted",
+    src: ()=>{ const t=TRANSLATIONS[currentLang]||TRANSLATIONS.en; return t.srcOVERVIEW; },
+    desc:v=>{ const t=(TRANSLATIONS[currentLang]||TRANSLATIONS.en).ptDesc||TRANSLATIONS.en.ptDesc;
+      return v.raw>15?t.high:v.raw>0?t.low:v.raw<-5?t.below:t.na; }
+  },
+  buy_pct:{
+    color:v=>v.raw>=85?"amber":v.raw>=70?"green":"red",
+    src: ()=>{ const t=TRANSLATIONS[currentLang]||TRANSLATIONS.en; return t.srcOVERVIEW; },
+    desc:v=>{ const t=(TRANSLATIONS[currentLang]||TRANSLATIONS.en).buypctDesc||TRANSLATIONS.en.buypctDesc;
+      return v.raw>=85?(v.raw+t.skewed):v.raw>=70?t.elev:v.raw>0?(v.raw+t.low):t.na; }
+  },
+};
+const BADGE_LABEL={flag:"Red Flag",caution:"Caution",clear:"Clear",neutral:"Neutral"};
+const VERDICT_MAP={
+  PASS: {cls:"pass",  getText(){ return (TRANSLATIONS[currentLang]||TRANSLATIONS.en).verdictPass; }},
+  WATCH:{cls:"watch", getText(){ return (TRANSLATIONS[currentLang]||TRANSLATIONS.en).verdictWatch; }},
+  FAIL: {cls:"fail",  getText(){ return (TRANSLATIONS[currentLang]||TRANSLATIONS.en).verdictFail; }},
+};
+
+function setStatus(msg,loading=false){
+  document.getElementById("status").innerHTML=loading
+    ?`<span class="spin"></span><span>${msg}</span>`:`<span>${msg}</span>`;
+}
+function showErr(html){const e=document.getElementById("err");e.innerHTML=html;e.style.display="block";}
+function hideErr(){document.getElementById("err").style.display="none";}
+
+function render(d){
+  document.getElementById("r-sym").textContent=d.symbol;
+  document.getElementById("r-name").textContent=d.name||"";
+  document.getElementById("r-price").textContent=d.price?`$${d.price.toFixed(2)}`:"";
+  const sec=document.getElementById("r-sector");
+  if(d.sector){sec.textContent=d.sector;sec.style.display="inline-block";}else sec.style.display="none";
+  const vm=VERDICT_MAP[d.verdict]||VERDICT_MAP.WATCH;
+  const chip=document.getElementById("verdict-chip");
+  chip.textContent=d.verdict;chip.className=`verdict-chip ${vm.cls}`;
+  document.getElementById("verdict-text").textContent=vm.getText ? vm.getText() : vm.text;
+  document.getElementById("score-n").textContent=d.score;
+  const fill=document.getElementById("score-fill");
+  fill.className=`score-fill ${d.score>=6?"high":d.score>=4?"mid":"low"}`;
+  setTimeout(()=>{fill.style.width=`${(d.score/9)*100}%`;},80);
+  const grid=document.getElementById("signals");
+  grid.innerHTML="";
+  const badgePriority = {flag:0, caution:1, neutral:2, clear:3};
+  Object.entries(d.signals)
+    .sort((a,b) => (badgePriority[a[1].badge]??2) - (badgePriority[b[1].badge]??2))
+    .forEach(([key,sig])=>{
+    const m=META[key];if(!m)return;
+    const el=document.createElement("div");
+    el.className=`sig ${sig.badge}`;
+    const tNow = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
+    const sigName = (tNow.sigNames && tNow.sigNames[key]) || m.name;
+    const badgeLbl = (tNow.badgeLabels && tNow.badgeLabels[sig.badge]) || sig.badge;
+    el.innerHTML=`
+      <div class="sig-top">
+        <div class="sig-name">${sigName}</div>
+        <div class="sig-badge ${sig.badge}">${badgeLbl}</div>
+      </div>
+      <div class="sig-val ${m.color(sig)}">${sig.value}</div>
+      <div class="sig-desc">${m.desc(sig)}</div>
+      <div class="sig-src">${typeof m.src==='function'?m.src():m.src}</div>
+    `;
+    grid.appendChild(el);
+  });
+  window._lastRenderData = d;
+  document.getElementById("results").style.display="block";
+  setTimeout(()=>document.getElementById("results").scrollIntoView({behavior:"smooth",block:"start"}),100);
+}
+
+
+// ── Market status (NYSE hours: Mon–Fri 9:30am–4:00pm ET) ──────
+function updateMarketStatus() {
+  const el = document.getElementById("market-status");
+  if (!el) return;
+
+  const now = new Date();
+  // Convert to ET (UTC-5 standard, UTC-4 daylight)
+  // Use Intl to get correct ET offset regardless of user's timezone
+  const etStr = now.toLocaleString("en-US", { timeZone: "America/New_York" });
+  const et = new Date(etStr);
+  const day  = et.getDay();   // 0=Sun, 6=Sat
+  const hour = et.getHours();
+  const min  = et.getMinutes();
+  const time = hour * 60 + min; // minutes since midnight ET
+
+  const PRE_OPEN  = 4  * 60;        // 4:00am ET
+  const OPEN      = 9  * 60 + 30;   // 9:30am ET
+  const CLOSE     = 16 * 60;        // 4:00pm ET
+  const POST_CLOSE= 20 * 60;        // 8:00pm ET
+
+  const isWeekday = day >= 1 && day <= 5;
+
+  let label, cls;
+  if (!isWeekday) {
+    label = "Market Closed"; cls = "closed";
+  } else if (time >= OPEN && time < CLOSE) {
+    label = "Market Open"; cls = "open";
+  } else if (time >= PRE_OPEN && time < OPEN) {
+    label = "Pre-Market"; cls = "prepost";
+  } else if (time >= CLOSE && time < POST_CLOSE) {
+    label = "After Hours"; cls = "prepost";
+  } else {
+    label = "Market Closed"; cls = "closed";
+  }
+
+  const t = TRANSLATIONS[currentLang] || TRANSLATIONS.en;
+  const labels = {
+    "Market Open": t.mktOpen,
+    "Market Closed": t.mktClosed,
+    "Pre-Market": t.mktPre,
+    "After Hours": t.mktAfter,
+  };
+  el.textContent = labels[label] || label;
+  el.className = "market-status " + cls;
+}
+
+updateMarketStatus();
+setInterval(updateMarketStatus, 60 * 1000); // refresh every minute
+
+
+
+
+// Override updateMarketStatus to use current language
+const _origUpdateMarketStatus = typeof updateMarketStatus !== 'undefined' ? updateMarketStatus : null;
+
+document.getElementById("go-btn").addEventListener("click",analyze);
+document.getElementById("ticker").addEventListener("keydown",e=>{if(e.key==="Enter")analyze();});
+</script>
+</body>
+</html>
